@@ -12,12 +12,6 @@ import (
 	"github.com/go-gui-org/go-gui/gui"
 )
 
-// Обработчики ниже действуют по событию, поэтому помечают его обработанным
-// через ctx.Consume() («one-event rule» go-gui): без этого событие уходит
-// выше — к родителю, — и действие может выполниться дважды. В OnTextChanged
-// события нет (ctx.Event == nil), Consume() тогда — безопасная заглушка;
-// в OnSelect событие есть, и Consume() снимает его с раскрывающегося списка.
-
 func viewDialogSettingsTwitchTier1SubValueHandler(s string, ctx gui.EventCtx) {
 	number, err := strconv.Atoi(s)
 	if err != nil {
@@ -178,17 +172,12 @@ func settingsDialogViewDonateXSectionHandler(ctx gui.EventCtx) {
 	ctx.Consume()
 }
 
-// settingsDialogViewCurrenciesSectionHandler — пункт сайдбара «Валюты».
 func settingsDialogViewCurrenciesSectionHandler(ctx gui.EventCtx) {
 	st := gui.State[state.AppState](ctx.Window)
 	st.SettingsState.CurrentSection = state.SettingSectionCurrencies
 	ctx.Consume()
 }
 
-// Рабочая кнопка Enable в разделе DonateX (вместо кнопки без обработчика).
-// Клиент DonateX в приложение ещё не подключён — провайдера нет в
-// internal/providers, — поэтому обработчик НИЧЕГО не запускает и только
-// записывает намерение в черновик настроек.
 func viewDialogSettingsDonateXEnableHandler(ctx gui.EventCtx) {
 	st := gui.State[state.AppState](ctx.Window)
 
@@ -197,7 +186,6 @@ func viewDialogSettingsDonateXEnableHandler(ctx gui.EventCtx) {
 	ctx.Consume()
 }
 
-// Выключение DonateX — снимает намерение из черновика.
 func viewDialogSettingsDonateXDisableHandler(ctx gui.EventCtx) {
 	st := gui.State[state.AppState](ctx.Window)
 
@@ -206,9 +194,6 @@ func viewDialogSettingsDonateXDisableHandler(ctx gui.EventCtx) {
 	ctx.Consume()
 }
 
-// viewDialogSettingsCurrenciesBaseHandler — смена базовой валюты: курсы
-// пересчитываются под новую базу. Пересчитать нечем (нет ставки новой
-// базы) — курсы очищаются, и раздел просит обновить их из API.
 func viewDialogSettingsCurrenciesBaseHandler(sel []string, ctx gui.EventCtx) {
 	if len(sel) != 1 {
 		return
@@ -222,13 +207,11 @@ func viewDialogSettingsCurrenciesBaseHandler(sel []string, ctx gui.EventCtx) {
 	draft := &st.SettingsState.Settings
 
 	if !draft.ReanchorCurrencyRates(base) {
-		// Пересчитать нечем — курсы очищаются, значения надо взять из API.
 		draft.Currencies = map[settings.Currency]float64{base: 1}
 		st.SettingsState.Currencies.UpdatedAt = time.Time{}
 	}
 	draft.BaseCurrency = base
 
-	// Подсказка нужна, пока курсов всех валют нет.
 	st.SettingsState.Currencies.NeedsRefresh = !allRatesPresent(draft.Currencies)
 	st.SettingsState.Currencies.Error = ""
 
@@ -236,9 +219,6 @@ func viewDialogSettingsCurrenciesBaseHandler(sel []string, ctx gui.EventCtx) {
 	ctx.Consume()
 }
 
-// viewDialogSettingsCurrenciesRateHandler — правка курса вручную: валюту
-// задаёт замыкание. Значение — число с запятой или точкой, строго больше
-// нуля; негодное значение поле не принимает.
 func viewDialogSettingsCurrenciesRateHandler(code settings.Currency) func(string, gui.EventCtx) {
 	return func(s string, ctx gui.EventCtx) {
 		rate, err := parseCurrencyRate(s)
@@ -254,7 +234,6 @@ func viewDialogSettingsCurrenciesRateHandler(code settings.Currency) func(string
 		}
 		draft.Currencies[code] = rate
 
-		// Ручная правка — курсы больше не из API.
 		st.SettingsState.Currencies.UpdatedAt = time.Time{}
 		st.SettingsState.Currencies.Error = ""
 		st.SettingsState.Currencies.NeedsRefresh = !allRatesPresent(draft.Currencies)
@@ -263,8 +242,6 @@ func viewDialogSettingsCurrenciesRateHandler(code settings.Currency) func(string
 	}
 }
 
-// viewDialogSettingsCurrenciesRefreshHandler — кнопка «Обновить курсы»:
-// запрос идёт в горутине, результат приходит в UI через QueueCommand.
 func viewDialogSettingsCurrenciesRefreshHandler(ctx gui.EventCtx) {
 	st := gui.State[state.AppState](ctx.Window)
 	if st.SettingsState.Currencies.Pending {
@@ -280,13 +257,8 @@ func viewDialogSettingsCurrenciesRefreshHandler(ctx gui.EventCtx) {
 	ctx.Consume()
 }
 
-// fetchRates — точка подмены в тестах: гейт-свип кликает кнопку «Обновить
-// курсы», и без подмены тест ходил бы в живой API.
 var fetchRates = currency.FetchRates
 
-// fetchCurrenciesRates тянет курсы из API и кладёт их в черновик
-// настроек. Сеть — в горутине, в UI возвращаемся через w.QueueCommand
-// (frame thread).
 func fetchCurrenciesRates(w *gui.Window, base string) {
 	ctx, cancel := context.WithTimeout(w.Ctx(), 20*time.Second)
 	defer cancel()
@@ -314,7 +286,6 @@ func fetchCurrenciesRates(w *gui.Window, base string) {
 		st := gui.State[state.AppState](w)
 		st.SettingsState.Currencies.Pending = false
 
-		// База сменилась, пока шёл запрос: курсы другой базы не подходят.
 		if baseCurrency(st.SettingsState.Settings.BaseCurrency) != settings.Currency(base) {
 			st.SettingsState.Currencies.NeedsRefresh = true
 			w.InvalidateLayout()
@@ -337,7 +308,6 @@ func fetchCurrenciesRates(w *gui.Window, base string) {
 		st.SettingsState.Currencies.Error = ""
 		st.SettingsState.Currencies.UpdatedAt = rates.UpdatedAt
 		if st.SettingsState.Currencies.UpdatedAt.IsZero() {
-			// API не отдал время обновления — показываем время получения.
 			st.SettingsState.Currencies.UpdatedAt = time.Now()
 		}
 		st.SettingsState.Currencies.NeedsRefresh = !allRatesPresent(draft.Currencies)
@@ -346,8 +316,6 @@ func fetchCurrenciesRates(w *gui.Window, base string) {
 }
 
 func viewDialogSettingsSaveSettingsHandler(ctx gui.EventCtx) {
-	// Обработчик всегда действует по клику (сохраняет или сообщает об
-	// ошибке), поэтому событие помечается обработанным сразу.
 	ctx.Consume()
 
 	st := gui.State[state.AppState](ctx.Window)
@@ -363,8 +331,6 @@ func viewDialogSettingsSaveSettingsHandler(ctx gui.EventCtx) {
 		return
 	}
 
-	// Правила начисления обновляются сразу: потоки событий читают их из
-	// стора в момент события, перезапуск потока не нужен.
 	applyRulesToStore(st)
 
 	ctx.Window.DialogDismiss()

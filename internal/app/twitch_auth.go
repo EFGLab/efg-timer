@@ -35,8 +35,6 @@ func setTwitchConnected(cfg *settings.TwitchConfig, user providers.TwitchUser, s
 	cfg.ExpiresAt = &expiresAt
 }
 
-// copyTwitchAuthFields переносит только состояние входа: остальные поля
-// (тиры, bits) могут быть несохранёнными правками диалога.
 func copyTwitchAuthFields(dst *settings.TwitchConfig, src settings.TwitchConfig) {
 	dst.Enabled = src.Enabled
 	dst.Login = src.Login
@@ -58,10 +56,6 @@ func postTwitchAuthError(w *gui.Window, err error) {
 	})
 }
 
-// queueTwitchConnected фиксирует вход в настройках и состоянии диалога.
-// errText непуст — вход выполнен, токен сохранён, но профиль не получен:
-// логин остаётся пустым, его доберёт restoreTwitchSession при следующем
-// запуске.
 func queueTwitchConnected(w *gui.Window, ctx context.Context, p *providers.TwitchProvider, user providers.TwitchUser, session providers.TwitchSession, errText string) {
 	w.QueueCommand(func(w *gui.Window) {
 		if ctx.Err() != nil {
@@ -79,8 +73,6 @@ func queueTwitchConnected(w *gui.Window, ctx context.Context, p *providers.Twitc
 	})
 }
 
-// startTwitchEventsOnce запускает поток событий Twitch, если он ещё не
-// идёт: у провайдера поток один.
 func startTwitchEventsOnce(w *gui.Window, p *providers.TwitchProvider, store *rules.Store) {
 	if p.EventsRunning() {
 		return
@@ -88,13 +80,10 @@ func startTwitchEventsOnce(w *gui.Window, p *providers.TwitchProvider, store *ru
 	startTwitchEvents(w, p, store)
 }
 
-// restoreTwitchSession читает секрет при старте. Если в настройках нет
-// логина или access-токен истёк, сессия проверяется через helix/users.
 func restoreTwitchSession(w *gui.Window, p *providers.TwitchProvider, cfg settings.TwitchConfig) {
 	ctx := w.Ctx()
 
 	if !cfg.Enabled {
-		// Секрет остался после выключения — не держим его без провайдера.
 		if _, found, err := p.LoadSession(ctx); err == nil && found {
 			_ = p.DeleteSession(ctx)
 		}
@@ -125,8 +114,7 @@ func restoreTwitchSession(w *gui.Window, p *providers.TwitchProvider, cfg settin
 			postTwitchAuthError(w, fmt.Errorf("не удалось проверить сессию Twitch: %w", err))
 			return
 		}
-		// FetchUser сам сохранил сессию, если токен ротировался; без ротации
-		// хранилище уже актуально — повторная запись не нужна.
+
 		w.QueueCommand(func(w *gui.Window) {
 			st := gui.State[state.AppState](w)
 			setTwitchConnected(&st.Settings.Providers.Twitch, user, updated)
@@ -134,18 +122,15 @@ func restoreTwitchSession(w *gui.Window, p *providers.TwitchProvider, cfg settin
 			if err := gui.SaveSettings(w, st.Settings); err != nil {
 				fmt.Println("twitch: save settings:", err)
 			}
-			// Провайдер подключён — запускаем поток событий.
 			startTwitchEventsOnce(w, p, st.Rules)
 			w.InvalidateLayout()
 		})
 		return
 	}
 
-	// Access-токен ещё жив, а логин уже сохранён: не ходим в сеть на старте.
 	w.QueueCommand(func(w *gui.Window) {
 		st := gui.State[state.AppState](w)
 		copyTwitchAuthFields(&st.SettingsState.Settings.Providers.Twitch, cfg)
-		// Провайдер подключён — запускаем поток событий.
 		startTwitchEventsOnce(w, p, st.Rules)
 		w.InvalidateLayout()
 	})
@@ -195,7 +180,6 @@ func runTwitchAuth(w *gui.Window, p *providers.TwitchProvider, ctx context.Conte
 	})
 
 	if err := browser.OpenURL(auth.VerificationURI); err != nil {
-		// Не фатально: код и ссылка остаются в диалоге.
 		fmt.Println("twitch: open browser:", err)
 	}
 
@@ -213,9 +197,6 @@ func runTwitchAuth(w *gui.Window, p *providers.TwitchProvider, ctx context.Conte
 		return
 	}
 
-	// Токен сохраняем до запроса профиля: пользователь уже подтвердил код,
-	// а helix/users может упасть — профиль доберёт restoreTwitchSession при
-	// следующем запуске.
 	if err := p.SaveSession(ctx, session); err != nil {
 		if ctx.Err() == nil {
 			postTwitchAuthError(w, fmt.Errorf("не удалось сохранить сессию Twitch: %w", err))
@@ -231,7 +212,6 @@ func runTwitchAuth(w *gui.Window, p *providers.TwitchProvider, ctx context.Conte
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 			return
 		}
-		// Токен уже в хранилище: включаем без профиля и показываем ошибку.
 		fmt.Println("twitch: fetch user:", err)
 		queueTwitchConnected(w, ctx, p, providers.TwitchUser{}, updated, "не удалось получить канал Twitch: "+err.Error())
 		return
@@ -269,7 +249,6 @@ func viewDialogSettingsTwitchDisableHandler(ctx gui.EventCtx) {
 		oldSession, hadSession = p.Session()
 		epoch = p.SessionEpoch()
 		p.CancelAuth()
-		// Поток событий без входа не нужен — останавливаем.
 		p.StopEvents()
 		p.Disable()
 	}

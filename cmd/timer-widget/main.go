@@ -1,5 +1,3 @@
-// Command timer-widget — десктопное окно таймера обратного отсчёта на go-gui.
-// Настройки — JSON-конфиг, состояние окна — internal/state.
 package main
 
 import (

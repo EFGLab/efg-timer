@@ -7,12 +7,8 @@ import (
 	"github.com/EFGLab/efg-timer/internal/timer"
 )
 
-// auditMaxRows — сколько последних записей показывается в диалоге журнала
-// (новые сверху). Это потолок окна просмотра, а не замена прокрутке.
 const auditMaxRows = 100
 
-// OpLabel — метка типа операции для журнала. Неизвестные значения
-// возвращаются как есть — журнал не должен молча терять записи.
 func OpLabel(op timer.AuditOp) string {
 	switch op {
 	case timer.OpAdd:
@@ -29,8 +25,6 @@ func OpLabel(op timer.AuditOp) string {
 	return string(op)
 }
 
-// SourceLabel — метка источника операции. Неизвестные значения
-// возвращаются как есть (см. OpLabel).
 func SourceLabel(src timer.Source) string {
 	switch src {
 	case timer.SourceManual:
@@ -45,9 +39,6 @@ func SourceLabel(src timer.Source) string {
 	return string(src)
 }
 
-// FormatAuditEntry — строка записи журнала:
-// «21:07:05 · добавление · донат Donatex (150 ₽) · 05:00 → 06:00».
-// Пустая Detail не оставляет пустых секций и «дыр» в разделителях.
 func FormatAuditEntry(e timer.AuditEntry) string {
 	var sb strings.Builder
 	sb.WriteString(e.At.Format("15:04:05"))
@@ -67,8 +58,6 @@ func FormatAuditEntry(e timer.AuditEntry) string {
 	return sb.String()
 }
 
-// auditVisible — окно отображения: последние auditMaxRows записей,
-// перевёрнутые (новые сверху) — исходный срез Audit() хронологический.
 func auditVisible(entries []timer.AuditEntry) []timer.AuditEntry {
 	if len(entries) > auditMaxRows {
 		entries = entries[len(entries)-auditMaxRows:]
@@ -80,11 +69,6 @@ func auditVisible(entries []timer.AuditEntry) []timer.AuditEntry {
 	return out
 }
 
-// auditEntryKey — ключ записи журнала для модели высот виртуального списка.
-//
-// Ключ привязан к самой записи, а не к её позиции: новые записи вставляются
-// сверху, и ключ по позиции заставил бы go-gui считать, что строка
-// «переехала» на соседнюю — измеренная высота поехала бы за строкой.
 func auditEntryKey(e timer.AuditEntry) string {
 	return strconv.FormatInt(e.At.UnixNano(), 10) + "|" +
 		string(e.Op) + "|" + string(e.Source) + "|" + e.Detail + "|" +

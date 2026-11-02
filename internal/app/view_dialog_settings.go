@@ -12,9 +12,7 @@ type sidebarItem struct {
 	icon    string
 	section state.SettingSection
 	handler func(ctx gui.EventCtx)
-	// a11y — доступное имя кнопки навигации: на кнопке только иконка,
-	// своего текста у Button нет, поэтому имя задаётся явно.
-	a11y string
+	a11y    string
 }
 
 var sidebarItems []sidebarItem = []sidebarItem{
@@ -67,8 +65,6 @@ func settingsDialogContent(w *gui.Window) gui.View {
 	st := gui.State[state.AppState](w)
 	theme := gui.CurrentTheme()
 
-	// Ёмкость среза — по фактическому числу пунктов, а не по константе:
-	// пунктов боковой панели может быть сколько угодно.
 	sidebarItemsView := make([]gui.View, 0, len(sidebarItems))
 	for _, item := range sidebarItems {
 		colorsSet := gui.ColorSet{}

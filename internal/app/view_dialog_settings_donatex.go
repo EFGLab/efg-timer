@@ -7,18 +7,10 @@ import (
 	"github.com/go-gui-org/go-gui/gui"
 )
 
-// Идентичности собирает фрейм — scope группы InputGroup плюс короткий
-// leaf. Leaf "time-input" здесь совпадает с leaf в разделе
-// DonationAlerts, но scope у групп разный ("donatex-time" против
-// "donationalerts-time"), поэтому эффективные ID в кадре не совпадают.
 func settingsDialogDonatexSection(w *gui.Window) []gui.View {
 	gState := gui.State[state.AppState](w)
 	theme := gui.CurrentTheme()
 
-	// Кнопка Enable переключает флаг в черновике настроек, как кнопка в
-	// разделе DonationAlerts. Сам клиент DonateX в приложение ещё не
-	// подключён, поэтому обработчик ничего не запускает (см.
-	// viewDialogSettingsDonateXEnableHandler).
 	var toggleButton gui.View
 	if gState.SettingsState.Settings.Providers.DonateX.Enabled {
 		toggleButton = gui.Button(gui.ButtonCfg{
@@ -67,9 +59,8 @@ func settingsDialogDonatexSection(w *gui.Window) []gui.View {
 							ID: "donatex-time",
 							Segments: []gui.InputGroupSegment{
 								gui.InputGroupInput(gui.InputCfg{
-									ID:          "time-input",
-									Placeholder: "10",
-									// Подпись поля выводится только как A11Y-имя.
+									ID:            "time-input",
+									Placeholder:   "10",
 									A11YCfg:       gui.A11YCfg{A11YLabel: "Длительность доната"},
 									Width:         50,
 									Text:          strconv.Itoa(int(gState.SettingsState.Settings.Providers.DonateX.Time.Value)),

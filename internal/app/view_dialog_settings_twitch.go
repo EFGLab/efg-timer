@@ -7,11 +7,6 @@ import (
 	"github.com/go-gui-org/go-gui/gui"
 )
 
-// Идентичности виджета собирает фрейм — короткий leaf внутри группы
-// складывается со scope группы через ":". Leaf "time-input" абсолютным не
-// является, поэтому наследует scope InputGroup ("tier1"), и эффективный
-// ID получается "…:settings_content:tier1:time-input". Leaf с ":" внутри
-// был бы абсолютным и scope не унаследовал бы — таких ID в UI нет.
 func settingsDialogTwitchSection(w *gui.Window) []gui.View {
 	gState := gui.State[state.AppState](w)
 	theme := gui.CurrentTheme()

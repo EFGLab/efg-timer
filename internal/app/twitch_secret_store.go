@@ -7,8 +7,6 @@ import (
 	"github.com/go-gui-org/go-gui/gui"
 )
 
-// guiSecretStore — providers.SecretStore поверх go-gui. Вызывать только из
-// горутины: LoadSecret/SaveSecret могут ждать разблокировки OS-хранилища.
 type guiSecretStore struct {
 	w *gui.Window
 }

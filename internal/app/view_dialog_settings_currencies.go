@@ -10,26 +10,18 @@ import (
 	"github.com/go-gui-org/go-gui/gui"
 )
 
-// currencyCodes — валюты раздела «Валюты» в фиксированном порядке.
 var currencyCodes = []settings.Currency{
 	settings.CurrencyUSD,
 	settings.CurrencyEUR,
 	settings.CurrencyRUB,
 }
 
-// currencyOptions — варианты выбора базовой валюты.
 var currencyOptions = []gui.SelectOption{
 	{Label: string(settings.CurrencyUSD), Value: string(settings.CurrencyUSD)},
 	{Label: string(settings.CurrencyEUR), Value: string(settings.CurrencyEUR)},
 	{Label: string(settings.CurrencyRUB), Value: string(settings.CurrencyRUB)},
 }
 
-// Раздел «Валюты» в диалоге настроек: базовая валюта, курсы к ней и
-// кнопка обновления курсов из внешнего API.
-//
-// Курс валюты — сколько единиц базовой валюты в одной единице этой
-// валюты, поэтому строка базовой валюты всегда «1 <код> = 1 <код>» и
-// её поле не редактируется.
 func settingsDialogCurrenciesSection(w *gui.Window) []gui.View {
 	gState := gui.State[state.AppState](w)
 	theme := gui.CurrentTheme()
@@ -90,8 +82,6 @@ func settingsDialogCurrenciesSection(w *gui.Window) []gui.View {
 	}
 }
 
-// currencyRateRow — строка курса одной валюты: «1 <код> = [поле] <база>».
-// Для базовой валюты поле не редактируется.
 func currencyRateRow(gState *state.AppState, base, code settings.Currency) gui.View {
 	theme := gui.CurrentTheme()
 	isBase := code == base
@@ -101,8 +91,6 @@ func currencyRateRow(gState *state.AppState, base, code settings.Currency) gui.V
 		rate = 1
 	}
 
-	// Ставки нет (курсы очищены) — поле пустое, а подсказку даёт строка
-	// статуса раздела.
 	text := ""
 	if rate > 0 {
 		text = formatCurrencyRate(rate)
@@ -129,8 +117,6 @@ func currencyRateRow(gState *state.AppState, base, code settings.Currency) gui.V
 	})
 }
 
-// currenciesStatusText — строка статуса раздела: ошибка, подсказка или
-// время последнего обновления курсов.
 func currenciesStatusText(c state.CurrenciesState) string {
 	switch {
 	case c.Error != "":
@@ -146,7 +132,6 @@ func currenciesStatusText(c state.CurrenciesState) string {
 	}
 }
 
-// currenciesStatusStyle — роль темы для строки статуса.
 func currenciesStatusStyle(theme gui.Theme, c state.CurrenciesState) gui.TextStyle {
 	switch {
 	case c.Error != "":
@@ -158,8 +143,6 @@ func currenciesStatusStyle(theme gui.Theme, c state.CurrenciesState) gui.TextSty
 	}
 }
 
-// baseCurrency — базовая валюта из настроек; неизвестный код заменяется
-// на RUB, чтобы раздел оставался рабочим после правки settings.json.
 func baseCurrency(c settings.Currency) settings.Currency {
 	if knownCurrency(c) {
 		return c
@@ -167,7 +150,6 @@ func baseCurrency(c settings.Currency) settings.Currency {
 	return settings.CurrencyRUB
 }
 
-// knownCurrency — валюта из списка раздела (USD, EUR, RUB).
 func knownCurrency(c settings.Currency) bool {
 	for _, code := range currencyCodes {
 		if code == c {
@@ -177,7 +159,6 @@ func knownCurrency(c settings.Currency) bool {
 	return false
 }
 
-// allRatesPresent — есть ли курс у каждой валюты раздела.
 func allRatesPresent(rates map[settings.Currency]float64) bool {
 	for _, code := range currencyCodes {
 		if rates[code] <= 0 {
@@ -187,14 +168,10 @@ func allRatesPresent(rates map[settings.Currency]float64) bool {
 	return true
 }
 
-// formatCurrencyRate — курс для поля ввода: без хвостовых нулей и
-// экспоненты (80 → «80», 0.0125 → «0.0125»).
 func formatCurrencyRate(v float64) string {
 	return strconv.FormatFloat(v, 'f', -1, 64)
 }
 
-// parseCurrencyRate разбирает курс из поля ввода: число с запятой или
-// точкой, строго больше нуля.
 func parseCurrencyRate(s string) (float64, error) {
 	v, err := strconv.ParseFloat(
 		strings.ReplaceAll(strings.TrimSpace(s), ",", "."), 64,

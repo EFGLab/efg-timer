@@ -7,16 +7,6 @@ import (
 	"github.com/go-gui-org/go-gui/gui"
 )
 
-// Раздел DonationAlerts в диалоге настроек.
-//
-// Устроен как раздел Twitch: кнопка Enable / Cancel (пока идёт вход) /
-// Disable (когда подключено) и строка статуса под ней. Вход неблокирующий
-// (см. internal/app/donationalerts_auth.go), поэтому в диалоге видно, что
-// вход идёт, и его можно отменить.
-//
-// Идентичности собирает фрейм — scope группы InputGroup плюс короткий
-// leaf. Leaf "time-input" здесь совпадает с leaf в разделе DonateX, но
-// scope у групп разный, поэтому эффективные ID в кадре не совпадают.
 func settingsDialogDonationAlertsSection(w *gui.Window) []gui.View {
 	gState := gui.State[state.AppState](w)
 	theme := gui.CurrentTheme()
@@ -57,8 +47,6 @@ func settingsDialogDonationAlertsSection(w *gui.Window) []gui.View {
 	status := make([]gui.View, 0, 2)
 	switch {
 	case auth.Pending:
-		// Ссылка для браузера: если браузер не открылся сам, владелец
-		// жмёт кнопку под статусом.
 		status = append(status,
 			gui.Label("Вход в DonationAlerts…", theme.TextStyleTitleSmall),
 			gui.Button(gui.ButtonCfg{
@@ -71,11 +59,8 @@ func settingsDialogDonationAlertsSection(w *gui.Window) []gui.View {
 			}),
 		)
 	case auth.Error != "":
-		// Ошибка входа видна в диалоге, а не только в консоли.
 		status = append(status, gui.Label("⚠ "+auth.Error, theme.TextStyleError))
 	case daCfg.Enabled:
-		// Идентификатор подключения — id пользователя DA. Код страницы
-		// донатов в настройках не хранится (там только метаданные входа).
 		if daCfg.UserID != 0 {
 			status = append(status, gui.Label("Подключён: "+strconv.FormatInt(daCfg.UserID, 10), theme.TextStyleBody))
 		} else {
@@ -118,9 +103,8 @@ func settingsDialogDonationAlertsSection(w *gui.Window) []gui.View {
 							ID: "donationalerts-time",
 							Segments: []gui.InputGroupSegment{
 								gui.InputGroupInput(gui.InputCfg{
-									ID:          "time-input",
-									Placeholder: "10",
-									// Подпись поля выводится только как A11Y-имя.
+									ID:            "time-input",
+									Placeholder:   "10",
 									A11YCfg:       gui.A11YCfg{A11YLabel: "Длительность доната"},
 									Width:         50,
 									Text:          strconv.Itoa(int(gState.SettingsState.Settings.Providers.DonationAlerts.Time.Value)),
@@ -154,7 +138,6 @@ func settingsDialogDonationAlertsSection(w *gui.Window) []gui.View {
 								}),
 							},
 						}),
-						// Порог доната задан в базовой валюте.
 						gui.Label(
 							string(baseCurrency(gState.SettingsState.Settings.BaseCurrency)),
 							theme.TextStyleBody,
