@@ -1,0 +1,72 @@
+{
+  "name": "TimerWidget",
+  "image": "mcr.microsoft.com/devcontainers/go:1.27-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": false,
+      "username": "vscode",
+      "upgradePackages": true
+    }
+  },
+  "containerEnv": {
+    "GOPATH": "/go",
+    "GOBIN": "/go/bin",
+    "CGO_ENABLED": "0",
+    "DISPLAY": "${localEnv:DISPLAY:-:0}",
+    "XAUTHORITY": "${containerWorkspaceFolder}/.devcontainer/xauth.forward"
+  },
+  "remoteEnv": {
+    "PATH": "/go/bin:/usr/local/go/bin:${containerEnv:PATH}"
+  },
+  "forwardPorts": [8089],
+  "mounts": [
+    "source=timer-widget-go-mod,target=/go/pkg/mod,type=volume",
+    "source=timer-widget-go-bin,target=/go/bin,type=volume",
+    "source=timer-widget-go-build,target=/home/vscode/.cache/go-build,type=volume",
+    "source=timer-widget-agents-data,target=/home/vscode/.agents,type=volume",
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+    "source=/mnt/wslg,target=/mnt/wslg,type=bind",
+    {
+      "source": "${localEnv:HOME}/.ssh",
+      "target": "/home/vscode/.ssh",
+      "type": "bind"
+    }
+  ],
+  "initializeCommand": "bash -c 'd=\"$PWD\"; [ -f \"$d/.devcontainer/devcontainer.json\" ] || d=\"$(dirname \"$d\")\"; { echo \"== $(date -Is) host probe ==\"; uname -r; echo \"DISPLAY=$DISPLAY WAYLAND_DISPLAY=$WAYLAND_DISPLAY\"; ls -la /mnt/wslg 2>&1 | head -10; ls -la /mnt/wslg/.X11-unix 2>&1 | head -6; ls -la /tmp/.X11-unix 2>&1 | head -6; } > \"$d/.devcontainer/wslg-probe.txt\" 2>&1; cp -f \"$HOME/.Xauthority\" \"$d/.devcontainer/xauth.forward\" 2>/dev/null || rm -f \"$d/.devcontainer/xauth.forward\"; true'",
+  "postCreateCommand": "bash scripts/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.Go",
+        "redhat.vscode-yaml",
+        "bierner.markdown-mermaid",
+        "eamodio.gitlens",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "go.lintTool": "golangci-lint",
+        "go.lintOnSave": "file",
+        "go.formatTool": "goimports",
+        "go.useLanguageServer": true,
+        "go.testFlags": [
+          "-v",
+          "-count=1"
+        ],
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          },
+          "editor.insertSpaces": false,
+          "editor.tabSize": 4
+        }
+      }
+    }
+  }
+}

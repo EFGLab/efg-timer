@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=TimerWidget
+GenericName=Таймер для стрима
+Comment=Таймер обратного отсчёта с донат-начислениями и OBS-виджетом
+Exec=timer-widget
+Icon=timer-widget
+Terminal=false
+Categories=Utility;Network;
+Keywords=timer;stream;obs;donation;

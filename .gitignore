@@ -1,0 +1,9 @@
+/timer-widget
+build/
+.devcontainer/wslg-probe.txt
+.devcontainer/xauth.forward
+
+**/testdata/failures/
+.zed
+.vscode
+cmd/timer-widget/__debug_bin.exe
