@@ -10,14 +10,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// DefaultCentrifugoURL — WS-эндпоинт DA. Сервер говорит JSON-протокол
-// Centrifugo v1 (эпохи Centrifugo v2): в доки DA примеры сообщений
-// {"method":1,"id":2,"params":{...}} — поэтому современный centrifuge-go
-// (protobuf v2) здесь не применим, клиент реализован на gorilla/websocket.
 const DefaultCentrifugoURL = "wss://centrifugo.donationalerts.com/connection/websocket"
 
-// DonationEvent — донат из публикации канала $alerts:donation_<user_id>;
-// поля лежат во вложенном data.data, amount в исходной валюте.
 type DonationEvent struct {
 	ID       int64   `json:"id"`
 	Username string  `json:"username"`
@@ -26,23 +20,18 @@ type DonationEvent struct {
 	Currency string  `json:"currency"`
 }
 
-// CentrifugoOptions — параметры DA-соединения. Client поставляет Bearer для
-// REST-подписки; SocketToken приходит из Client.SocketToken.
 type CentrifugoOptions struct {
-	WSURL       string // пусто → DefaultCentrifugoURL
+	WSURL       string
 	SocketToken string
-	Channel     string // $alerts:donation_<user_id>
+	Channel     string
 	Client      *Client
-	OnDonation  func(DonationEvent) // вызывается из горутины чтения Run
+	OnDonation  func(DonationEvent)
 }
 
-// Centrifugo — клиент WS DA: connect по socket_connection_token → REST-подписка
-// канала с client id → client-side подписка токеном канала → публикации.
 type Centrifugo struct {
 	opts CentrifugoOptions
 }
 
-// NewCentrifugo готовит клиента, подставляя дефолтный WS-эндпоинт.
 func NewCentrifugo(opts CentrifugoOptions) *Centrifugo {
 	if opts.WSURL == "" {
 		opts.WSURL = DefaultCentrifugoURL
@@ -50,9 +39,6 @@ func NewCentrifugo(opts CentrifugoOptions) *Centrifugo {
 	return &Centrifugo{opts: opts}
 }
 
-// Run — до ctx.Done: соединение → REST-подписка (client id из connect) →
-// WS-подписка токеном канала → цикл чтения публикаций; при отмене ctx
-// возвращает nil.
 func (c *Centrifugo) Run(ctx context.Context) error {
 	dialer := websocket.Dialer{}
 	conn, _, err := dialer.DialContext(ctx, c.opts.WSURL, nil)
@@ -81,7 +67,6 @@ func (c *Centrifugo) Run(ctx context.Context) error {
 		return fmt.Errorf("donationalerts: centrifugo subscribe: %w", err)
 	}
 
-	// Отмена ctx прерывает блокирующее чтение: сторож ставит read-deadline.
 	go func() {
 		<-ctx.Done()
 		_ = conn.SetReadDeadline(time.Now())
@@ -91,7 +76,7 @@ func (c *Centrifugo) Run(ctx context.Context) error {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			if ctx.Err() != nil {
-				return nil // штатная отмена
+				return nil
 			}
 			return fmt.Errorf("donationalerts: centrifugo чтение: %w", err)
 		}
@@ -100,7 +85,7 @@ func (c *Centrifugo) Run(ctx context.Context) error {
 			Params json.RawMessage `json:"params"`
 		}
 		if json.Unmarshal(raw, &msg) != nil || msg.Method != 1 {
-			continue // пинги и прочие служебные пуши
+			continue
 		}
 		var pub struct {
 			Channel string `json:"channel"`
@@ -121,11 +106,8 @@ func (c *Centrifugo) Run(ctx context.Context) error {
 	}
 }
 
-// requestResponse — отправляет клиентское сообщение (method+id) и ждёт ответ
-// с тем же id, пропуская серверные пуши; для connect вытаскивает client id
-// из result, для subscribe подтверждает успех (result есть — ошибки нет).
 func (c *Centrifugo) requestResponse(conn *websocket.Conn, method int, params map[string]any, out any) error {
-	id := method + 1 // connect=1, subscribe=2
+	id := method + 1
 	req, err := json.Marshal(map[string]any{"method": method, "id": id, "params": params})
 	if err != nil {
 		return err
@@ -147,7 +129,7 @@ func (c *Centrifugo) requestResponse(conn *websocket.Conn, method int, params ma
 			} `json:"error"`
 		}
 		if json.Unmarshal(raw, &msg) != nil || msg.ID != id {
-			continue // пуш или чужой ответ
+			continue
 		}
 		if msg.Error != nil {
 			return fmt.Errorf("сервер: код %d: %s", msg.Error.Code, msg.Error.Message)

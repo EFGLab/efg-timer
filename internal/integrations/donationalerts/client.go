@@ -11,33 +11,26 @@ import (
 	"sync"
 )
 
-// DefaultUserURL — профиль DA: socket_connection_token + user_id (e05s01-t2).
 const DefaultUserURL = "https://www.donationalerts.com/api/v1/user/oauth"
 
-// DefaultCentrifugoSubscribeURL — REST-подписка на каналы Centrifugo (e05s02-t1):
-// POST {channels, client} → токены каналов.
 const DefaultCentrifugoSubscribeURL = "https://www.donationalerts.com/api/v1/centrifuge/subscribe"
 
-// Client — клиент API DonationAlerts: Bearer-токен, автообновление при 401.
 type Client struct {
 	opts ClientOptions
-	mu   sync.Mutex // защита Session: авто-refresh из разных горутин (e05s02)
+	mu   sync.Mutex
 }
 
-// ClientOptions — параметры клиента. TokenURL/UserURL переопределяются
-// в тестах; Session задаётся после OAuth-входа.
 type ClientOptions struct {
 	ClientID     string
 	ClientSecret string
 	Session      Session
-	TokenURL     string // пусто → DefaultTokenURL
-	UserURL      string // пусто → DefaultUserURL
-	SubscribeURL string // пусто → DefaultCentrifugoSubscribeURL (e05s02-t1)
+	TokenURL     string
+	UserURL      string
+	SubscribeURL string
 	HTTPClient   *http.Client
-	OnRefresh    func(Session) // хук после успешного авто-refresh (main сохраняет конфиг)
+	OnRefresh    func(Session)
 }
 
-// NewClient готовит клиента: подставляет дефолты эндпоинтов и HTTP.
 func NewClient(opts ClientOptions) *Client {
 	if opts.TokenURL == "" {
 		opts.TokenURL = DefaultTokenURL
@@ -54,16 +47,12 @@ func NewClient(opts ClientOptions) *Client {
 	return &Client{opts: opts}
 }
 
-// Session — копия текущей сессии (потокобезопасно); после SocketToken
-// содержит socket_connection_token и user_id в памяти.
 func (c *Client) Session() Session {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.opts.Session
 }
 
-// Refresh обновляет пару токенов refresh-грантом и хранит её в клиенте;
-// OnRefresh вызывается после успешного обновления.
 func (c *Client) Refresh(ctx context.Context) error {
 	sess := c.Session()
 	newSess, err := RefreshSession(ctx, OAuthOptions{
@@ -83,9 +72,6 @@ func (c *Client) Refresh(ctx context.Context) error {
 	return nil
 }
 
-// doRequest — запрос с Bearer; при 401 один раз обновляет токен и повторяет
-// запрос (преследование подвисших сессий после рестарта). Тело — []byte:
-// повторная отправка требует перезапускаемого тела.
 func (c *Client) doRequest(ctx context.Context, method, url string, body []byte) (*http.Response, error) {
 	resp, err := c.rawRequest(ctx, method, url, body)
 	if err != nil {
@@ -121,8 +107,6 @@ func (c *Client) rawRequest(ctx context.Context, method, url string, body []byte
 	return resp, nil
 }
 
-// SubscribeCentrifuge — POST /api/v1/centrifuge/subscribe {channels, client}
-// → токен канала для client-side WS-подписки (e05s02-t1).
 func (c *Client) SubscribeCentrifuge(ctx context.Context, channel, clientID string) (string, error) {
 	body, err := json.Marshal(map[string]any{"channels": []string{channel}, "client": clientID})
 	if err != nil {
@@ -151,9 +135,6 @@ func (c *Client) SubscribeCentrifuge(ctx context.Context, channel, clientID stri
 	return r.Channels[0].Token, nil
 }
 
-// SocketToken — GET /api/v1/user/oauth: socket_connection_token для
-// Centrifugo и user_id (канал $alerts:donation_<user_id>, e05s02).
-// Оба значения хранятся в памяти сессии (json:"-" — в конфиг не пишутся).
 func (c *Client) SocketToken(ctx context.Context) (string, int64, error) {
 	resp, err := c.doRequest(ctx, http.MethodGet, c.opts.UserURL, nil)
 	if err != nil {

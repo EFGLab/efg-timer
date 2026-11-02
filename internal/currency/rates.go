@@ -1,4 +1,3 @@
-// Package currency — получение курсов валют из внешнего API.
 package currency
 
 import (
@@ -13,46 +12,33 @@ import (
 	"time"
 )
 
-// DefaultRatesURL — бесплатный API курсов валют (exchangerate-api.com, tier без
-// ключа и регистрации): обновляется раз в сутки и публикует RUB.
 const DefaultRatesURL = "https://open.er-api.com/v6/latest"
 
-// requestTimeout — таймаут HTTP-запроса курсов.
 const requestTimeout = 10 * time.Second
 
-// maxBodyBytes — предел тела ответа.
 const maxBodyBytes = 1 << 20
 
-// maxErrorRunes — длина текста ошибки, попадающей в UI.
 const maxErrorRunes = 300
 
-// userAgent — User-Agent с названием приложения.
 const userAgent = "EFG-Timer"
 
 var (
-	// ratesURL — адрес API; тесты подменяют его на httptest-сервер.
-	ratesURL = DefaultRatesURL
-	// httpClient — клиент с таймаутом; тесты уменьшают таймаут.
+	ratesURL   = DefaultRatesURL
 	httpClient = &http.Client{Timeout: requestTimeout}
 )
 
-// supported — валюты, которые умеет считать приложение. Список совпадает с
-// настройками; пакет не зависит от internal/settings, чтобы не было цикла.
 var supported = map[string]bool{
 	"USD": true,
 	"EUR": true,
 	"RUB": true,
 }
 
-// Rates — курсы относительно базовой валюты.
 type Rates struct {
-	Base      string             // код базовой валюты
-	Rates     map[string]float64 // код валюты → единиц базовой валюты за единицу этой
-	UpdatedAt time.Time          // время обновления данных (по данным API)
+	Base      string
+	Rates     map[string]float64
+	UpdatedAt time.Time
 }
 
-// apiResponse — ответ API: курс валюты = сколько её единиц в одной единице
-// базы (обратное к модели настроек).
 type apiResponse struct {
 	Result             string             `json:"result"`
 	BaseCode           string             `json:"base_code"`
@@ -61,7 +47,6 @@ type apiResponse struct {
 	Rates              map[string]float64 `json:"rates"`
 }
 
-// FetchRates запрашивает курсы относительно базовой валюты.
 func FetchRates(ctx context.Context, base string) (Rates, error) {
 	code := strings.ToUpper(strings.TrimSpace(base))
 	if code == "" {
@@ -112,9 +97,6 @@ func FetchRates(ctx context.Context, base string) (Rates, error) {
 		return Rates{}, fmt.Errorf("currency: %s: API не вернул курсы", endpoint)
 	}
 
-	// API отдаёт обратное: rates[cur] — сколько cur в одной единице базы.
-	// Наша модель — сколько единиц базы в одной единице cur, поэтому курс
-	// разворачивается.
 	rates := make(map[string]float64, len(payload.Rates))
 	for cur, rate := range payload.Rates {
 		cur = strings.ToUpper(strings.TrimSpace(cur))
@@ -136,7 +118,6 @@ func FetchRates(ctx context.Context, base string) (Rates, error) {
 	return Rates{Base: code, Rates: rates, UpdatedAt: updated}, nil
 }
 
-// truncate — обрезает текст ошибки, чтобы HTML от прокси не залил UI.
 func truncate(text string) string {
 	text = strings.TrimSpace(text)
 	runes := []rune(text)

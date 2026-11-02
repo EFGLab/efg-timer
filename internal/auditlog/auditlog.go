@@ -1,4 +1,3 @@
-// Package auditlog — хранение журнала операций в файле.
 package auditlog
 
 import (
@@ -15,11 +14,8 @@ import (
 	"github.com/EFGLab/efg-timer/internal/timer"
 )
 
-// fileName — имя файла журнала в папке данных приложения.
 const fileName = "audit.log"
 
-// Path — путь к файлу журнала: папка данных приложения (та же, где
-// settings.json) и имя файла. Папка создаётся при необходимости.
 func Path(appID string) (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
@@ -37,8 +33,6 @@ func Path(appID string) (string, error) {
 	return filepath.Join(appDir, fileName), nil
 }
 
-// entry — запись журнала в файле: поля timer.AuditEntry с json-тегами.
-// В timer теги не добавляем (пакет чужой) — маппинг живёт здесь.
 type entry struct {
 	At     time.Time     `json:"at"`
 	Op     timer.AuditOp `json:"op"`
@@ -48,20 +42,16 @@ type entry struct {
 	After  time.Duration `json:"after"`
 }
 
-// Store — журнал операций в файле (JSONL: одна запись — одна строка).
 type Store struct {
 	path string
 
 	mu sync.Mutex
 }
 
-// NewStore — хранилище по пути к файлу.
 func NewStore(path string) *Store {
 	return &Store{path: path}
 }
 
-// Load читает записи из файла (последние не более limit штук).
-// Отсутствующий файл — не ошибка: возвращается пустой список.
 func (s *Store) Load(limit int) ([]timer.AuditEntry, error) {
 	if limit <= 0 {
 		return nil, nil
@@ -90,7 +80,6 @@ func (s *Store) Load(limit int) ([]timer.AuditEntry, error) {
 
 		var e entry
 		if err := json.Unmarshal(line, &e); err != nil {
-			// Битая строка — пропускаем, журнал читается дальше.
 			continue
 		}
 
@@ -106,7 +95,6 @@ func (s *Store) Load(limit int) ([]timer.AuditEntry, error) {
 	return entries, nil
 }
 
-// Append дописывает запись в файл.
 func (s *Store) Append(e timer.AuditEntry) error {
 	line, err := json.Marshal(entryOf(e))
 	if err != nil {
@@ -132,7 +120,6 @@ func (s *Store) Append(e timer.AuditEntry) error {
 	if _, err := f.Write(line); err != nil {
 		return fmt.Errorf("auditlog: запись в %s: %w", s.path, err)
 	}
-	// Sync: запись должна пережить падение процесса.
 	if err := f.Sync(); err != nil {
 		return fmt.Errorf("auditlog: синхронизация %s: %w", s.path, err)
 	}
@@ -140,7 +127,6 @@ func (s *Store) Append(e timer.AuditEntry) error {
 	return nil
 }
 
-// entryOf — запись журнала в файле из записи таймера.
 func entryOf(e timer.AuditEntry) entry {
 	return entry{
 		At:     e.At,
@@ -152,7 +138,6 @@ func entryOf(e timer.AuditEntry) entry {
 	}
 }
 
-// toAudit — запись таймера из записи журнала в файле.
 func (e entry) toAudit() timer.AuditEntry {
 	return timer.AuditEntry{
 		At:     e.At,
